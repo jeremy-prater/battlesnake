@@ -50,8 +50,9 @@ pub struct BattleSnake {
     pub customizations: BattleSnakeCustomization,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub enum BattleSnakeMove {
+    #[default]
     #[serde(rename = "up")]
     Up,
     #[serde(rename = "down")]
@@ -62,7 +63,7 @@ pub enum BattleSnakeMove {
     Right,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct BattleSnakeMoveResponse {
     #[serde(rename = "move")]
     pub result_move: BattleSnakeMove,
