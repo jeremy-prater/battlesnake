@@ -1,15 +1,11 @@
 pub mod customization;
-pub mod end;
+pub mod engine;
 pub mod logging;
 pub mod schemas;
-pub mod start;
-pub mod turn;
 
 use anyhow::Result;
 use log::info;
 use warp::Filter;
-
-use crate::schemas::GameEvent;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -26,15 +22,15 @@ async fn main() -> Result<()> {
     let start = warp::post()
         .and(warp::path("start"))
         .and(warp::body::json())
-        .and_then(|body: GameEvent| start::start(body));
+        .and_then(engine::start);
     let turn = warp::post()
         .and(warp::path("move"))
         .and(warp::body::json())
-        .and_then(|body: GameEvent| turn::turn(body));
+        .and_then(engine::turn);
     let end = warp::post()
-        .and(warp::path("start"))
+        .and(warp::path("end"))
         .and(warp::body::json())
-        .and_then(|body: GameEvent| end::end(body));
+        .and_then(engine::end);
 
     let routes = status.or(start).or(turn).or(end);
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
