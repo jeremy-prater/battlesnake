@@ -2,6 +2,8 @@ use std::{collections::HashSet, ops::Sub};
 
 use serde::{Deserialize, Serialize};
 
+use crate::snake::BattleSnake;
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct RuleSet {
     pub name: String,
@@ -21,6 +23,28 @@ pub struct Game {
 pub struct Coordinate {
     pub x: i32,
     pub y: i32,
+}
+
+impl Coordinate {
+    pub fn to_direction(&self) -> Option<BattleSnakeMove> {
+        if self.x == 0 {
+            if self.y == 1 {
+                return Some(BattleSnakeMove::Up);
+            } else if self.y == -1 {
+                return Some(BattleSnakeMove::Down);
+            }
+        }
+
+        if self.y == 0 {
+            if self.x == 1 {
+                return Some(BattleSnakeMove::Right);
+            } else if self.x == -1 {
+                return Some(BattleSnakeMove::Left);
+            }
+        }
+
+        None
+    }
 }
 
 impl Sub for Coordinate {
@@ -47,20 +71,6 @@ pub struct BattleSnakeCustomization {
     pub color: String,
     pub head: String,
     pub tail: String,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct BattleSnake {
-    pub id: String,
-    pub name: String,
-    pub health: u32,
-    pub body: Vec<Coordinate>,
-    pub latency: String,
-    pub head: Coordinate,
-    pub length: u32,
-    pub shout: String,
-    pub squad: String,
-    pub customizations: BattleSnakeCustomization,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, Default)]

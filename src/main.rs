@@ -2,6 +2,7 @@ pub mod customization;
 pub mod engine;
 pub mod logging;
 pub mod schemas;
+pub mod snake;
 
 use anyhow::Result;
 use log::info;
