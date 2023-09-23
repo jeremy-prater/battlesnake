@@ -15,6 +15,7 @@ log = "0.4"
 fern = { version = "0.6", features = [ "colored" ] }
 anyhow = "1"
 chrono = "0.4"
+slab_tree = "0.3.2"
 
 [build-dependencies]
 vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }

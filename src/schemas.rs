@@ -1,4 +1,4 @@
-use std::{collections::HashSet, ops::Sub};
+use std::{collections::HashSet, fmt, ops::Sub};
 
 use serde::{Deserialize, Serialize};
 
@@ -26,6 +26,28 @@ pub struct Coordinate {
 }
 
 impl Coordinate {
+    pub fn translate(&self, direction: &BattleSnakeMove) -> Coordinate {
+        match direction {
+            BattleSnakeMove::Up => Coordinate {
+                x: self.x,
+                y: self.y + 1,
+            },
+            BattleSnakeMove::Down => Coordinate {
+                x: self.x,
+                y: self.y - 1,
+            },
+            BattleSnakeMove::Left => Coordinate {
+                x: self.x - 1,
+                y: self.y,
+            },
+            BattleSnakeMove::Right => Coordinate {
+                x: self.x + 1,
+                y: self.y,
+            },
+            BattleSnakeMove::None => self.clone(),
+        }
+    }
+
     pub fn to_direction(&self) -> Option<BattleSnakeMove> {
         if self.x == 0 {
             if self.y == 1 {
@@ -84,6 +106,7 @@ pub enum BattleSnakeMove {
     Left,
     #[serde(rename = "right")]
     Right,
+    None,
 }
 
 impl BattleSnakeMove {
@@ -93,7 +116,25 @@ impl BattleSnakeMove {
             BattleSnakeMove::Down,
             BattleSnakeMove::Left,
             BattleSnakeMove::Right,
+            // BattleSnakeMove::None,
         ])
+    }
+}
+
+pub struct TreeNode {
+    pub coordinate: Coordinate,
+    pub direction: BattleSnakeMove,
+    pub food: bool,
+    pub depth: i32,
+}
+
+impl fmt::Debug for TreeNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "({}, {}) {:?} {}",
+            self.coordinate.x, self.coordinate.y, self.direction, self.food
+        )
     }
 }
 

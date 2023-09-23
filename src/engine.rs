@@ -1,8 +1,13 @@
 use log::info;
-use std::{collections::HashSet, convert::Infallible, time::Instant};
+use slab_tree::*;
+use std::{
+    collections::{HashMap, HashSet},
+    convert::Infallible,
+    time::Instant,
+};
 
 use crate::{
-    schemas::{BattleSnakeMove, BattleSnakeMoveResponse, Coordinate, GameEvent},
+    schemas::{BattleSnakeMove, BattleSnakeMoveResponse, Coordinate, GameEvent, TreeNode},
     snake::BattleSnake,
 };
 
@@ -20,11 +25,19 @@ pub async fn end(event: GameEvent) -> Result<impl warp::Reply, Infallible> {
     Ok(warp::reply::json(&serde_json::Value::default()))
 }
 
-pub async fn turn(event: GameEvent) -> Result<impl warp::Reply, Infallible> {
-    let start = Instant::now();
+pub fn generate_tree_move(
+    event: &GameEvent,
+    root: &mut NodeMut<'_, TreeNode>,
+    start: Instant,
+    depth: i32,
+) {
+    if start.elapsed().as_millis() > 250 {
+        return;
+    }
 
-    let id = event.game.id.clone();
-    let turn = event.turn;
+    if depth > event.board.width {
+        return;
+    }
 
     let all_snake_bodies: Vec<Coordinate> = event
         .board
@@ -33,9 +46,7 @@ pub async fn turn(event: GameEvent) -> Result<impl warp::Reply, Infallible> {
         .flat_map(|snake| snake.body.clone())
         .collect();
 
-    let direction = event.you.direction();
-
-    let mut available_moves = get_available_moves(
+    let available_moves = get_available_moves(
         &event.you,
         &all_snake_bodies,
         &event.board.hazards,
@@ -43,16 +54,99 @@ pub async fn turn(event: GameEvent) -> Result<impl warp::Reply, Infallible> {
         event.board.height,
     );
 
-    let direction = match direction {
-        Some(direction) => match available_moves.contains(&direction) {
-            true => direction,
-            false => available_moves.drain().last().unwrap_or_default(),
+    info!("Depth : {} {:?}", depth, available_moves);
+
+    for available_move in available_moves {
+        let new_coordinate = event.you.head.translate(&available_move);
+        let food = event.board.food.contains(&new_coordinate);
+        let mut new_node = root.append(TreeNode {
+            coordinate: new_coordinate,
+            direction: available_move.clone(),
+            food,
+            depth,
+        });
+
+        let new_event = GameEvent {
+            you: event.you.do_move(available_move),
+            ..event.clone()
+        };
+
+        generate_tree_move(&new_event, &mut new_node, start, depth + 1);
+    }
+}
+
+pub async fn turn(event: GameEvent) -> Result<impl warp::Reply, Infallible> {
+    let start = Instant::now();
+
+    let id = event.game.id.clone();
+    let turn = event.turn;
+
+    let mut move_tree = TreeBuilder::new()
+        .with_root(TreeNode {
+            coordinate: event.you.head.clone(),
+            direction: BattleSnakeMove::None,
+            food: false,
+            depth: 0,
+        })
+        .build();
+
+    generate_tree_move(
+        &event,
+        &mut move_tree.root_mut().unwrap(),
+        Instant::now(),
+        0,
+    );
+
+    let root = move_tree.root().unwrap();
+
+    let mut results = HashMap::new();
+    for child in root.children() {
+        // let no_move = child
+        //     .traverse_level_order()
+        //     .filter(|node| node.data().direction == BattleSnakeMove::None)
+        //     .peekable()
+        //     .peek()
+        //     .is_some();
+
+        // if no_move {
+        //     continue;
+        // }
+
+        let (node, depth) = (child.data(), child.traverse_level_order().count());
+        results.insert(node.direction.clone(), depth);
+    }
+
+    let (best_move, best_depth, best_food) = root.children().fold(
+        (BattleSnakeMove::Up, 0, false),
+        |(best_move, best_depth, best_food), next_node| {
+            let next_depth = next_node
+                .traverse_level_order()
+                .fold(0, |max_depth, next_node| {
+                    let next_depth = next_node.data().depth;
+                    match next_depth.cmp(&max_depth) {
+                        std::cmp::Ordering::Greater => next_depth,
+                        std::cmp::Ordering::Less | std::cmp::Ordering::Equal => max_depth,
+                    }
+                });
+            let next_direction = next_node.data().direction.clone();
+            let has_food = event.board.food.contains(&next_node.data().coordinate);
+            if (false && !best_food && has_food) || (!best_food && next_depth > best_depth) {
+                (next_direction, next_depth, has_food)
+            } else {
+                (best_move, best_depth, best_food)
+            }
         },
-        None => available_moves.drain().last().unwrap_or_default(),
-    };
+    );
+
+    // let mut tree_string = String::new();
+    // move_tree.write_formatted(&mut tree_string).unwrap();
+
+    // info!("Move tree\n{}", tree_string);
+
+    info!("Best move : {:?} Best Depth : {}", best_move, best_depth);
 
     let response = warp::reply::json(&BattleSnakeMoveResponse {
-        result_move: direction,
+        result_move: best_move,
         shout: "".to_string(),
     });
 

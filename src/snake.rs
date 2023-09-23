@@ -20,4 +20,15 @@ impl BattleSnake {
     pub fn direction(&self) -> Option<BattleSnakeMove> {
         (self.body[0].clone() - self.body[1].clone()).to_direction()
     }
+
+    pub fn do_move(&self, direction: BattleSnakeMove) -> BattleSnake {
+        let mut new_snake = self.clone();
+        new_snake.head = new_snake.head.translate(&direction);
+        new_snake.body.insert(0, new_snake.head.clone());
+
+        // Maybe drop off tail elements here?
+        _ = new_snake.body.pop();
+
+        new_snake
+    }
 }
